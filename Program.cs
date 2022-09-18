@@ -5,13 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace CS_Exam_02_Quiz
 {
-
-
-
-    class User
+    
+    public class User
     {
         public string   Name;
         public string   Password;
@@ -25,50 +24,88 @@ namespace CS_Exam_02_Quiz
         public int    Score;
     }
 
-    class Answer
-    {
-        string Text;
-        bool   isCorrect;
-    }
     class Question
     {
-        string Discipline;
-        string QuizText;
-        List<Answer> Answers;
+        public int      QID;
+        public string   Discipline;
+        public string   QuestionText;
+        public string[] AnswerText;
+        public bool[]   IsCorrect;
+        public string   FileName;
+        public Question(int qid)
+        {
+            AnswerText = new string[4];
+            IsCorrect  = new bool[4];
+            FileName   = $"Questions\\{QID}_{Discipline}.xml";
+        }
     }
 
     class Quiz
     {
-        public List<User> Users;
+        public List<User>       Users;
         public List<Scoreboard> Scoreboards;
-        public List<Question> QuestionsPack;
+        public List<Question>   QuestionsPack;
+        public string           RootFolder;
 
         public Quiz()
         {
-            List<User> Users = new List<User>();
-            List<Scoreboard> Scoreboards = new List<Scoreboard>();
-            List<Question> QuestionsPack = new List<Question>();
+            Users         = new List<User>();
+            Scoreboards   = new List<Scoreboard>();
+            QuestionsPack = new List<Question>();
+            RootFolder    = @"C:\CS_Exam_02_Quiz";
         }
-        public bool CheckFreeUserName(string newUserName)
+
+        public void LoadUsersList()
         {
-            if (newUserName == "")
+            string filePath = Directory.GetCurrentDirectory();
+            XmlSerializer xmlFormat = new XmlSerializer(typeof(List<User>));
+            try
+            {
+                using (Stream fStream = File.OpenRead($"{RootFolder}\\Users.xml"))
+                {
+                    this.Users = (List<User>)xmlFormat.Deserialize(fStream);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+        public void SaveUsersList()
+        {
+            XmlSerializer xmlFormat = new XmlSerializer(typeof(List<User>));
+            try
+            {
+                using (Stream fStream = File.Create($"{RootFolder}\\Users.xml"))
+                {
+                    xmlFormat.Serialize(fStream, this.Users);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+        public int CheckUsersList(string userName)
+        {
+            if (userName == "")
             {
                 Console.WriteLine("Введено пустое поле!");
-                return false;
+                return -2;
             }
             if (Users != null)
             {
-                foreach (User existingUser in Users)
+                for (int i = 0; i < this.Users.Count; i++)
                 {
-                    if (existingUser.Name == newUserName)
+                    if (this.Users[i].Name == userName)
                     {
-                        Console.WriteLine("Пользователь с таким именем уже существует!");
-                        return false;
+                        //Console.WriteLine("Пользователь с таким именем уже существует!");
+                        return i;
                     }
                 }
             }
             Console.WriteLine("Ок. Имя свободно");
-            return true;
+            return -1;
         }
     }
 
@@ -76,50 +113,98 @@ namespace CS_Exam_02_Quiz
     {
         static void Main(string[] args)
         {
-            Quiz quiz = new Quiz();
-            Console.WriteLine("Викторина");
-            Console.WriteLine("Войдите или Зарегистрируйтесь:");
-            Console.WriteLine("1 - Войти по лонину и паролю");
-            Console.WriteLine("2 - Регистрация нового пользователя");
-            int logreg = Int32.Parse(Console.ReadLine());
-
-            switch (logreg)
+            bool inGame = true;
+            while (inGame)
             {
-                case 2:
-                    User newUser = new User();
-                    string newUserName;
-                    string newUserPassword;
-                    DateTime newUserBirthDay;
-                    Console.WriteLine("Регистрация");
-                    do
-                    {
-                        Console.Write("Введите логин: ");
-                        newUserName = Console.ReadLine();
-                        newUser.Name = newUserName;
-                    } while (!quiz.CheckFreeUserName(newUserName));
+                Quiz quiz = new Quiz();
+                quiz.LoadUsersList();
+                Console.WriteLine("Викторина");
+                Console.WriteLine("Войдите или Зарегистрируйтесь:");
+                Console.WriteLine("1 - Войти по лонину и паролю");
+                Console.WriteLine("2 - Регистрация нового пользователя");
+                int logreg = Int32.Parse(Console.ReadLine());
 
-                    Console.Write("Введите пароль: ");
-                    newUserPassword = Console.ReadLine();
-                    newUser.Password = newUserPassword;
+                switch (logreg)
+                {
+                    case 1:
+                        string inputName;
+                        string inputPass;
+                        Console.WriteLine("Вход в систему");
+                        do
+                        {
+                            Console.Write("Введите логин: ");
+                            inputName = Console.ReadLine();
+                        } while (quiz.CheckUsersList(inputName) < 0);
 
-                    Console.Write("Введите дату рождения: ");
-                    newUserBirthDay = DateTime.Parse(Console.ReadLine());
-                    newUser.BirthDate = newUserBirthDay;
+                        do
+                        {
+                            Console.Write("Введите пароль: ");
+                            inputPass = Console.ReadLine();
+                        } while (quiz.Users[quiz.CheckUsersList(inputName)].Password != inputPass);
+                        Console.Write("пароль OK");
+                        Console.ReadLine();
+                        inGame = false;
+                        break;
+                    case 2:
+                        User newUser = new User();
+                        string newUserName;
+                        string newUserPassword;
+                        DateTime newUserBirthDay;
+                        Console.WriteLine("Регистрация");
+                        do
+                        {
+                            Console.Write("Введите логин: ");
+                            newUserName = Console.ReadLine();
+                            newUser.Name = newUserName;
+                        } while (quiz.CheckUsersList(newUserName) != -1);
 
-                    quiz.Users.Add(newUser);
+                        Console.Write("Введите пароль: ");
+                        newUserPassword = Console.ReadLine();
+                        newUser.Password = newUserPassword;
 
-                    using (FileStream fs = new FileStream("users.json", FileMode.OpenOrCreate))
-                    {
-                        JsonSerializer.Serialize(fs, quiz.Users);
-                        Console.WriteLine("Data has been saved to file");
-                    }
-                    break;
-                default:
-                    break;
+                        Console.Write("Введите дату рождения: ");
+                        newUserBirthDay = DateTime.Parse(Console.ReadLine());
+                        newUser.BirthDate = newUserBirthDay;
+
+                        quiz.Users.Add(newUser);
+                        quiz.SaveUsersList();
+                        inGame = false;
+                        break;
+                    default:
+                        break;
+                }
             }
 
+            Console.WriteLine("Экран Игры");
+            Console.WriteLine("Выберите действие:");
+            Console.WriteLine("1 - Стартовать викторину");
+            Console.WriteLine("2 - Смотреть последние результаты");
+            Console.WriteLine("3 - Смотреть Топ-20 игроков");
+            Console.WriteLine("4 - Редактировать профиль");
 
             Console.ReadLine();
         }
     }
 }
+
+
+
+/*quiz.LoadUsersList();
+                    foreach (User user in quiz.Users)
+                    {
+                        Console.WriteLine(user.Name);
+                    }*/
+//open file stream
+/*using (StreamWriter file = File.CreateText($"{filePath}\\users.json"))
+{
+    JsonSerializer serializer = new JsonSerializer();
+    //serialize object directly into file stream
+    serializer.Serialize(file, quiz.Users);
+}
+
+using (JsonReader file = new JsonReader($"{filePath}\\users.json"))
+{
+    JsonSerializer serializer = new JsonSerializer();
+    //serialize object directly into file stream
+    quiz.Users = JsonSerializer.Deserialize< List<User>>(json);
+}*/
