@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿//using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,40 +24,37 @@ namespace CS_Exam_02_Quiz
         public int    Score;
     }
 
-    class Question
+    public class Question
     {
         public int      QID;
         public string   Discipline;
         public string   QuestionText;
         public string[] AnswerText;
         public bool[]   IsCorrect;
-        public string   FileName;
-        public Question(int qid)
+        public Question()
         {
             AnswerText = new string[4];
             IsCorrect  = new bool[4];
-            FileName   = $"Questions\\{QID}_{Discipline}.xml";
         }
     }
 
     class Quiz
     {
-        public List<User>       Users;
-        public List<Scoreboard> Scoreboards;
-        public List<Question>   QuestionsPack;
-        public string           RootFolder;
+        public List<User>        Users;
+        public List<Scoreboard>  Scoreboards;
+        public Queue<Question>   QuestionsPack;
+        public string            RootFolder;
 
         public Quiz()
         {
             Users         = new List<User>();
             Scoreboards   = new List<Scoreboard>();
-            QuestionsPack = new List<Question>();
+            QuestionsPack = new Queue<Question>();
             RootFolder    = @"C:\CS_Exam_02_Quiz";
         }
 
         public void LoadUsersList()
         {
-            string filePath = Directory.GetCurrentDirectory();
             XmlSerializer xmlFormat = new XmlSerializer(typeof(List<User>));
             try
             {
@@ -107,17 +104,70 @@ namespace CS_Exam_02_Quiz
             Console.WriteLine("Ок. Имя свободно");
             return -1;
         }
+
+        public void LoadQuestion(string filePath)
+        {
+            XmlSerializer xmlFormat = new XmlSerializer(typeof(Question));
+            try
+            {
+                using (Stream fStream = File.OpenRead(filePath))
+                {
+                    QuestionsPack.Enqueue((Question)xmlFormat.Deserialize(fStream));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        public bool AskQuestion()
+        {
+            Console.WriteLine($"Вопросов осталось: {QuestionsPack.Count}");
+            Question currQ = QuestionsPack.Dequeue();
+            bool forNowIsCorrect = false;
+            Console.WriteLine(currQ.QuestionText);
+            for (int i = 0; i < currQ.AnswerText.Length; i++)
+            {
+                Console.WriteLine($"{i+1} - {currQ.AnswerText[i]}");
+            }
+            int choice = Int32.Parse(Console.ReadLine());
+            for (int i = 0; i < currQ.IsCorrect.Length; i++)
+            {
+                if (currQ.IsCorrect[i] == true)
+                {
+                    if (choice - 1 == i)
+                        forNowIsCorrect = true;
+                    else
+                    {
+                        forNowIsCorrect = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (choice - 1 == i)
+                    {
+                        forNowIsCorrect = false;
+                        break;
+                    }
+                }
+            }
+            return forNowIsCorrect;
+        }
     }
 
     class Program
     {
         static void Main(string[] args)
         {
+            Quiz quiz = new Quiz();
+            quiz.LoadUsersList();
+
             bool inGame = true;
             while (inGame)
             {
-                Quiz quiz = new Quiz();
-                quiz.LoadUsersList();
+                
                 Console.WriteLine("Викторина");
                 Console.WriteLine("Войдите или Зарегистрируйтесь:");
                 Console.WriteLine("1 - Войти по лонину и паролю");
@@ -175,13 +225,35 @@ namespace CS_Exam_02_Quiz
                 }
             }
 
+            int score = 0;
             Console.WriteLine("Экран Игры");
             Console.WriteLine("Выберите действие:");
             Console.WriteLine("1 - Стартовать викторину");
             Console.WriteLine("2 - Смотреть последние результаты");
             Console.WriteLine("3 - Смотреть Топ-20 игроков");
             Console.WriteLine("4 - Редактировать профиль");
+            int gameScreen = Int32.Parse(Console.ReadLine());
 
+            switch (gameScreen)
+            {
+                case 1:
+                    string[] questions = Directory.GetFiles($"{quiz.RootFolder}\\Questions");
+                    foreach (string file in questions)
+                    {
+                        quiz.LoadQuestion(file);
+                    }
+                    
+                    foreach (Question q in quiz.QuestionsPack)
+                    {
+                        if (quiz.AskQuestion())
+                            score++;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            Console.WriteLine($"Score: {score}");
             Console.ReadLine();
         }
     }
