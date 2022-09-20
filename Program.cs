@@ -17,11 +17,11 @@ namespace CS_Exam_02_Quiz
         public DateTime BirthDate;
     }
 
-    class Scoreboard
+    class Score
     {
         public string UserName;
         public string Discipline;
-        public int    Score;
+        public int    Result;
     }
 
     public class Question
@@ -36,20 +36,54 @@ namespace CS_Exam_02_Quiz
             AnswerText = new string[4];
             IsCorrect  = new bool[4];
         }
+
+        public bool AskQuestion()
+        {
+            //Console.WriteLine($"Вопросов осталось: {QuestionsPack.Count}");
+            bool forNowIsCorrect = false;
+            Console.WriteLine(QuestionText);
+            for (int i = 0; i < AnswerText.Length; i++)
+            {
+                Console.WriteLine($"{i + 1} - {AnswerText[i]}");
+            }
+            int choice = Int32.Parse(Console.ReadLine());
+            for (int i = 0; i < IsCorrect.Length; i++)
+            {
+                if (IsCorrect[i] == true)
+                {
+                    if (choice - 1 == i)
+                        forNowIsCorrect = true;
+                    else
+                    {
+                        forNowIsCorrect = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (choice - 1 == i)
+                    {
+                        forNowIsCorrect = false;
+                        break;
+                    }
+                }
+            }
+            return forNowIsCorrect;
+        }
     }
 
     class Quiz
     {
-        public List<User>        Users;
-        public List<Scoreboard>  Scoreboards;
-        public Queue<Question>   QuestionsPack;
-        public string            RootFolder;
+        public List<User>     Users;
+        public List<Score>    Scoreboards;
+        public List<Question> QuestionsPack;
+        public string         RootFolder;
 
         public Quiz()
         {
             Users         = new List<User>();
-            Scoreboards   = new List<Scoreboard>();
-            QuestionsPack = new Queue<Question>();
+            Scoreboards   = new List<Score>();
+            QuestionsPack = new List<Question>();
             RootFolder    = @"C:\CS_Exam_02_Quiz";
         }
 
@@ -112,7 +146,7 @@ namespace CS_Exam_02_Quiz
             {
                 using (Stream fStream = File.OpenRead(filePath))
                 {
-                    QuestionsPack.Enqueue((Question)xmlFormat.Deserialize(fStream));
+                    QuestionsPack.Add((Question)xmlFormat.Deserialize(fStream));
                 }
             }
             catch (Exception ex)
@@ -121,39 +155,9 @@ namespace CS_Exam_02_Quiz
             }
         }
 
-        public bool AskQuestion()
+        public void SaveScoreboard()
         {
-            Console.WriteLine($"Вопросов осталось: {QuestionsPack.Count}");
-            Question currQ = QuestionsPack.Dequeue();
-            bool forNowIsCorrect = false;
-            Console.WriteLine(currQ.QuestionText);
-            for (int i = 0; i < currQ.AnswerText.Length; i++)
-            {
-                Console.WriteLine($"{i+1} - {currQ.AnswerText[i]}");
-            }
-            int choice = Int32.Parse(Console.ReadLine());
-            for (int i = 0; i < currQ.IsCorrect.Length; i++)
-            {
-                if (currQ.IsCorrect[i] == true)
-                {
-                    if (choice - 1 == i)
-                        forNowIsCorrect = true;
-                    else
-                    {
-                        forNowIsCorrect = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    if (choice - 1 == i)
-                    {
-                        forNowIsCorrect = false;
-                        break;
-                    }
-                }
-            }
-            return forNowIsCorrect;
+
         }
     }
 
@@ -163,6 +167,7 @@ namespace CS_Exam_02_Quiz
         {
             Quiz quiz = new Quiz();
             quiz.LoadUsersList();
+            User player = new User();
 
             bool inGame = true;
             while (inGame)
@@ -179,18 +184,22 @@ namespace CS_Exam_02_Quiz
                     case 1:
                         string inputName;
                         string inputPass;
+                        int userIndex;
                         Console.WriteLine("Вход в систему");
                         do
                         {
                             Console.Write("Введите логин: ");
                             inputName = Console.ReadLine();
-                        } while (quiz.CheckUsersList(inputName) < 0);
+                            userIndex = quiz.CheckUsersList(inputName);
+                        } while (userIndex < 0);
+
+                        player = quiz.Users[userIndex];
 
                         do
                         {
                             Console.Write("Введите пароль: ");
                             inputPass = Console.ReadLine();
-                        } while (quiz.Users[quiz.CheckUsersList(inputName)].Password != inputPass);
+                        } while (player.Password != inputPass);
                         Console.Write("пароль OK");
                         Console.ReadLine();
                         inGame = false;
@@ -218,6 +227,7 @@ namespace CS_Exam_02_Quiz
 
                         quiz.Users.Add(newUser);
                         quiz.SaveUsersList();
+                        player = newUser;
                         inGame = false;
                         break;
                     default:
@@ -245,7 +255,7 @@ namespace CS_Exam_02_Quiz
                     
                     foreach (Question q in quiz.QuestionsPack)
                     {
-                        if (quiz.AskQuestion())
+                        if (q.AskQuestion())
                             score++;
                     }
                     break;
@@ -254,6 +264,13 @@ namespace CS_Exam_02_Quiz
             }
 
             Console.WriteLine($"Score: {score}");
+
+            Score results = new Score();
+            results.UserName = player.Name;
+            results.Result = score;
+            results.Discipline = "Mixed";
+            quiz.Scoreboards.Add(results);
+
             Console.ReadLine();
         }
     }
