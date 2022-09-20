@@ -17,11 +17,12 @@ namespace CS_Exam_02_Quiz
         public DateTime BirthDate;
     }
 
-    class Score
+    public class Score
     {
-        public string UserName;
-        public string Discipline;
-        public int    Result;
+        public string   UserName;
+        public string   Discipline;
+        public int      Result;
+        public DateTime Date;
     }
 
     public class Question
@@ -39,7 +40,6 @@ namespace CS_Exam_02_Quiz
 
         public bool AskQuestion()
         {
-            //Console.WriteLine($"Вопросов осталось: {QuestionsPack.Count}");
             bool forNowIsCorrect = false;
             Console.WriteLine(QuestionText);
             for (int i = 0; i < AnswerText.Length; i++)
@@ -75,14 +75,14 @@ namespace CS_Exam_02_Quiz
     class Quiz
     {
         public List<User>     Users;
-        public List<Score>    Scoreboards;
+        public List<Score>    Scoreboard;
         public List<Question> QuestionsPack;
         public string         RootFolder;
 
         public Quiz()
         {
             Users         = new List<User>();
-            Scoreboards   = new List<Score>();
+            Scoreboard    = new List<Score>();
             QuestionsPack = new List<Question>();
             RootFolder    = @"C:\CS_Exam_02_Quiz";
         }
@@ -155,9 +155,60 @@ namespace CS_Exam_02_Quiz
             }
         }
 
+        public void LoadScoreboard()
+        {
+            XmlSerializer xmlFormat = new XmlSerializer(typeof(List<Score>));
+            try
+            {
+                using (Stream fStream = File.OpenRead($"{RootFolder}\\Scoreboard.xml"))
+                {
+                    Scoreboard = (List<Score>)xmlFormat.Deserialize(fStream);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
         public void SaveScoreboard()
         {
+            // Sort Entries
+            Score swap = new Score();
+            for (int i = 0; i < Scoreboard.Count; i++)
+            {
+                for (int j = Scoreboard.Count - 1; j > i; j--)
+                {
+                    if (Scoreboard[j - 1].Result < Scoreboard[j].Result)
+                    {
+                        swap = Scoreboard[j - 1];
+                        Scoreboard[j - 1] = Scoreboard[j];
+                        Scoreboard[j] = swap;
+                    }
+                    if (Scoreboard[j - 1].Result == Scoreboard[j].Result)
+                    {
+                        if (Scoreboard[j - 1].Date > Scoreboard[j].Date)
+                        {
+                            swap = Scoreboard[j - 1];
+                            Scoreboard[j - 1] = Scoreboard[j];
+                            Scoreboard[j] = swap;
+                        }
+                    }
+                }
+            }
 
+            XmlSerializer xmlFormat = new XmlSerializer(typeof(List<Score>));
+            try
+            {
+                using (Stream fStream = File.Create($"{RootFolder}\\Scoreboard.xml"))
+                {
+                    xmlFormat.Serialize(fStream, Scoreboard);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 
@@ -167,14 +218,16 @@ namespace CS_Exam_02_Quiz
         {
             Quiz quiz = new Quiz();
             quiz.LoadUsersList();
+            quiz.LoadScoreboard();
             User player = new User();
+            int userIndex = -1;
 
             bool inGame = true;
             while (inGame)
             {
                 
-                Console.WriteLine("Викторина");
-                Console.WriteLine("Войдите или Зарегистрируйтесь:");
+                Console.WriteLine("\tВикторина");
+                Console.WriteLine("Войдите или Зарегистрируйтесь:\n");
                 Console.WriteLine("1 - Войти по лонину и паролю");
                 Console.WriteLine("2 - Регистрация нового пользователя");
                 int logreg = Int32.Parse(Console.ReadLine());
@@ -184,8 +237,7 @@ namespace CS_Exam_02_Quiz
                     case 1:
                         string inputName;
                         string inputPass;
-                        int userIndex;
-                        Console.WriteLine("Вход в систему");
+                        Console.WriteLine("Вход в систему\n");
                         do
                         {
                             Console.Write("Введите логин: ");
@@ -209,7 +261,7 @@ namespace CS_Exam_02_Quiz
                         string newUserName;
                         string newUserPassword;
                         DateTime newUserBirthDay;
-                        Console.WriteLine("Регистрация");
+                        Console.WriteLine("\tРегистрация\n");
                         do
                         {
                             Console.Write("Введите логин: ");
@@ -236,10 +288,10 @@ namespace CS_Exam_02_Quiz
             }
 
             int score = 0;
-            Console.WriteLine("Экран Игры");
-            Console.WriteLine("Выберите действие:");
+            Console.WriteLine("\tЭкран Игры");
+            Console.WriteLine("Выберите действие:\n");
             Console.WriteLine("1 - Стартовать викторину");
-            Console.WriteLine("2 - Смотреть последние результаты");
+            Console.WriteLine("2 - Смотреть мои результаты");
             Console.WriteLine("3 - Смотреть Топ-20 игроков");
             Console.WriteLine("4 - Редактировать профиль");
             int gameScreen = Int32.Parse(Console.ReadLine());
@@ -258,19 +310,66 @@ namespace CS_Exam_02_Quiz
                         if (q.AskQuestion())
                             score++;
                     }
+
+                    Score results = new Score();
+                    results.UserName = player.Name;
+                    results.Result = score;
+                    results.Discipline = "Mixed";
+                    results.Date = DateTime.Now;
+                    quiz.Scoreboard.Add(results);
+                    quiz.SaveScoreboard();
+                    break;
+                case 2:
+                    Console.WriteLine("\tМои лучшие результаты");
+                    Console.WriteLine("Score\t Discipline\t Date");
+                    foreach (Score entry in quiz.Scoreboard)
+                    {
+                        if (entry.UserName == player.Name)
+                        {
+                            Console.WriteLine($"{entry.Result}\t {entry.Discipline}\t\t {entry.Date}");
+                        }
+                    }
+                    break;
+                case 3:
+                    Console.WriteLine("\tТоп-20 результатов");
+                    Console.WriteLine("Score\t Player\t Discipline\t Date");
+                    for (int i = 0; i < quiz.Scoreboard.Count; i++)
+                    {
+                        if (i < 20)
+                        {
+                            Console.WriteLine($"{quiz.Scoreboard[i].Result}\t {quiz.Scoreboard[i].UserName}\t {quiz.Scoreboard[i].Discipline}\t\t {quiz.Scoreboard[i].Date}");
+                        }
+                    }
+                    break;
+                case 4:
+                    Console.WriteLine("\tРедактор профиля");
+                    Console.WriteLine("Выберите действие:\n");
+                    Console.WriteLine("1 - Изменить пароль");
+                    Console.WriteLine("2 - Изменить дату рождения");
+                    int editChoice = Int32.Parse(Console.ReadLine());
+                    switch (editChoice)
+                    {
+                        case 1:
+                            Console.Write("Введите новый пароль: ");
+                            player.Password = Console.ReadLine();
+                            Console.WriteLine("Пароль принят");
+                            break;
+                        case 2:
+                            Console.Write("Введите дату рождения: ");
+                            player.BirthDate = DateTime.Parse(Console.ReadLine());
+                            Console.WriteLine("Дата рождения изменена");
+                            break;
+                        default:
+                            break;
+                    }
+                    quiz.Users[userIndex] = player;
+                    quiz.SaveUsersList();
                     break;
                 default:
                     break;
             }
-
-            Console.WriteLine($"Score: {score}");
-
-            Score results = new Score();
-            results.UserName = player.Name;
-            results.Result = score;
-            results.Discipline = "Mixed";
-            quiz.Scoreboards.Add(results);
-
+            
+            Console.WriteLine("Program ended!");
             Console.ReadLine();
         }
     }
