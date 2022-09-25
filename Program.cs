@@ -40,36 +40,36 @@ namespace CS_Exam_02_Quiz
 
         public bool AskQuestion()
         {
-            bool forNowIsCorrect = false;
             Console.WriteLine($"\t{QuestionText}\n");
 
-            for (int i = 0; i < AnswerText.Length; i++)
-            {
+            for (int i = 0; i < AnswerText.Length; i++) {
                 Console.WriteLine($"{i + 1} - {AnswerText[i]}");
             }
-            int choice = Int32.Parse(Console.ReadLine());
 
-            for (int i = 0; i < IsCorrect.Length; i++)
-            {
-                if (IsCorrect[i] == true)
-                {
-                    if (choice - 1 == i)
-                        forNowIsCorrect = true;
-                    else
-                    {
-                        forNowIsCorrect = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    if (choice - 1 == i)
-                    {
-                        forNowIsCorrect = false;
-                        break;
-                    }
+            int validAnswers = 0;
+            foreach (bool var in IsCorrect) {
+                if (var == true) { validAnswers++; }
+            }
+            Console.WriteLine($"\nПравильных ответов в этом вопросе: {validAnswers}");
+
+            int[] choice = new int[validAnswers];
+            bool[] compare = new bool[4];
+            for (int i = 0; i < validAnswers; i++) {
+                Console.Write($"Введите свой {i+1}-й вариант ответа: ");
+                int guess = Int32.Parse(Console.ReadLine()) - 1;
+                compare[guess] = true;
+            }
+
+            bool forNowIsCorrect = false;
+            for (int i = 0; i < IsCorrect.Length; i++) {
+                if (IsCorrect[i] == compare[i]) {
+                    forNowIsCorrect = true;
+                } else {
+                    forNowIsCorrect = false;
+                    break;
                 }
             }
+
             return forNowIsCorrect;
         }
     }
